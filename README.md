@@ -4,6 +4,14 @@ To upgrade this to a full voice system we need to hook the voice up to a LLM for
 
 ![image](https://github.com/user-attachments/assets/86e272b6-e203-4c6a-bc96-af2885fba937)
 
+## Examples generated with this interface
+
+
+https://github.com/user-attachments/assets/0e2827d9-944b-4960-98ea-79470ad5ef10
+
+
+
+
 ## Web Interface
 
 This repository includes a modern web interface built with:
