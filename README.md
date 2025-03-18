@@ -45,6 +45,11 @@ These optimizations result in:
 - Maintained audio quality
 - Efficient storage and bandwidth usage
 
+## Not Included
+
+* Not included in this repo are the CSM and llama model
+* Model checkpoint file: server/ckpt.pt (PyTorch weights file)
+* Model definition: models.py (Contains ModelArgs and Model class definitions)
 
 
 # CSM
