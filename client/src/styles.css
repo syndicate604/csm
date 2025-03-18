@@ -1,0 +1,101 @@
+/* Global styles */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--mantine-color-gray-0);
+  min-height: 100%;
+}
+
+#root {
+  width: 100%;
+  max-width: 800px;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  box-sizing: border-box;
+  margin: 0 auto;
+}
+
+/* Message input styles */
+.message-input {
+  width: 100%;
+  margin: 1rem 0;
+}
+
+/* Speaker selection styles */
+.mantine-SegmentedControl-root {
+  border: 1px solid var(--mantine-color-gray-3);
+}
+
+.mantine-SegmentedControl-control {
+  padding: 4px;
+}
+
+.mantine-SegmentedControl-label {
+  min-width: 120px;
+  padding: 12px;
+  transition: all 0.2s ease;
+}
+
+.mantine-SegmentedControl-label[data-active] {
+  background-color: var(--mantine-color-blue-0);
+  color: var(--mantine-color-blue-filled);
+}
+
+.mantine-SegmentedControl-label:hover:not([data-disabled]) {
+  background-color: var(--mantine-color-gray-0);
+}
+
+.mantine-SegmentedControl-label[data-disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 12px;
+  border: 1px solid var(--mantine-color-gray-3);
+  border-radius: var(--mantine-radius-md);
+  font-family: var(--mantine-font-family);
+  font-size: var(--mantine-font-size-sm);
+  line-height: 1.5;
+  resize: vertical;
+  background-color: white;
+  transition: border-color 0.2s ease;
+}
+
+textarea:focus {
+  outline: none;
+  border-color: var(--mantine-color-blue-5);
+}
+
+/* Ensure audio controls are centered and full width */
+audio {
+  width: 100% !important;
+  margin: 0 auto;
+  display: block;
+}
+
+/* Add some responsive padding */
+@media (max-width: 600px) {
+  #root {
+    padding: 1rem;
+    min-height: auto;
+  }
+  
+  body {
+    align-items: flex-start;
+  }
+}
