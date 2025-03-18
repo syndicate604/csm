@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Box, Button, Group, LoadingOverlay, NumberInput, Progress, Slider, Stack, Text, Title, MantineProvider, SegmentedControl, Center, createTheme } from '@mantine/core';
 import { IconMan, IconWoman, IconRobot, IconDownload } from '@tabler/icons-react';
 import axios from 'axios';
@@ -66,6 +66,15 @@ export default function App() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Create audio element ref with initial source
+  useEffect(() => {
+    if (!audioRef.current) {
+      const audio = new Audio();
+      audio.preload = "auto";
+      audioRef.current = audio;
+    }
+  }, []);
+
   // Save preferences when changed
   useEffect(() => {
     localStorage.setItem('selectedSpeaker', speaker.toString());
@@ -108,29 +117,67 @@ export default function App() {
     return cleanup;
   }, []);
 
-  // Update elapsed time during audio playback
-  const updateElapsedTime = useCallback(() => {
-    if (audioRef.current) {
-      setElapsedTime(audioRef.current.currentTime);
-    }
-  }, []);
-
-  // Start timer for audio playback
-  const startTimer = useCallback(() => {
+  // Timer management
+  const startTimer = () => {
     if (timerRef.current) {
-      window.clearInterval(timerRef.current);
+      clearInterval(timerRef.current);
     }
-    timerRef.current = window.setInterval(updateElapsedTime, 100);
-  }, [updateElapsedTime]);
+    timerRef.current = setInterval(() => {
+      if (audioRef.current) {
+        setElapsedTime(audioRef.current.currentTime);
+      }
+    }, 10);  // Update every 10ms for smooth display
+  };
 
-  // Stop timer for audio playback
-  const stopTimer = useCallback(() => {
+  const stopTimer = () => {
     if (timerRef.current) {
-      window.clearInterval(timerRef.current);
+      clearInterval(timerRef.current);
       timerRef.current = null;
     }
-    setElapsedTime(0);
-  }, []);
+  };
+
+  // Handle audio events
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handlePlay = () => {
+      startTimer();
+      setProgressText('Playing audio...');
+    };
+
+    const handlePause = () => {
+      stopTimer();
+      setProgressText('Audio paused');
+    };
+
+    const handleEnded = () => {
+      stopTimer();
+      setElapsedTime(0);
+      setProgressText('Audio playback complete');
+    };
+
+    const handleError = (e: ErrorEvent) => {
+      console.error('Audio playback error:', e);
+      stopTimer();
+      setProgressText('Error playing audio');
+    };
+
+    // Add event listeners
+    audio.addEventListener('play', handlePlay);
+    audio.addEventListener('pause', handlePause);
+    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('error', handleError);
+
+    // Cleanup
+    return () => {
+      audio.removeEventListener('play', handlePlay);
+      audio.removeEventListener('pause', handlePause);
+      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('error', handleError);
+      stopTimer();
+    };
+  }, []);  // Empty dependency array since we only want to set up listeners once
 
   const handleSubmit = async () => {
     if (!message.trim()) return;
@@ -175,11 +222,17 @@ export default function App() {
       const url = URL.createObjectURL(blob);
       setAudioUrl(url);
 
-      // Load and play audio
+      // Load audio and play automatically
       if (audioRef.current) {
-        audioRef.current.src = url;
-        audioRef.current.load();
-        setProgressText('Click play to start audio playback');
+        const audio = audioRef.current;
+        audio.src = url;
+        await audio.load(); // Wait for load to complete
+        try {
+          await audio.play();
+        } catch (error) {
+          console.warn("Autoplay failed:", error);
+          setProgressText('Click play to start audio (autoplay blocked by browser)');
+        }
       }
     } catch (error) {
       console.error('Error:', error);
@@ -188,51 +241,6 @@ export default function App() {
       setIsLoading(false);
     }
   };
-
-  // Handle audio events
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const handlePlay = () => {
-      startTimer();
-      setProgressText('Playing audio...');
-    };
-
-    const handlePause = () => {
-      stopTimer();
-      setProgressText('Audio paused');
-    };
-
-    const handleEnded = () => {
-      stopTimer();
-      setProgressText('Audio finished');
-      setElapsedTime(0);
-    };
-
-    const handleLoadedMetadata = () => {
-      setTotalDuration(audio.duration);
-    };
-
-    const handleTimeUpdate = () => {
-      setElapsedTime(audio.currentTime);
-    };
-
-    audio.addEventListener('play', handlePlay);
-    audio.addEventListener('pause', handlePause);
-    audio.addEventListener('ended', handleEnded);
-    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-
-    return () => {
-      audio.removeEventListener('play', handlePlay);
-      audio.removeEventListener('pause', handlePause);
-      audio.removeEventListener('ended', handleEnded);
-      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
-      stopTimer();
-    };
-  }, [startTimer, stopTimer]);
 
   const formatFilename = (text: string): string => {
     // Remove special characters and replace spaces with underscores
@@ -428,8 +436,14 @@ export default function App() {
                 <audio
                   ref={audioRef}
                   controls
-                  preload="auto"
+                  preload="metadata"
                   style={{ width: '100%' }}
+                  onLoadedMetadata={(e) => setTotalDuration(e.currentTarget.duration)}
+                  onTimeUpdate={(e) => setElapsedTime(e.currentTarget.currentTime)}
+                  onEnded={() => {
+                    setElapsedTime(0);
+                    stopTimer();
+                  }}
                 />
               </Box>
               <Group w="100%" gap="md">

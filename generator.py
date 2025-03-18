@@ -197,11 +197,13 @@ class Generator:
         temperature: float = 0.9,
         topk: int = 50,
     ) -> torch.Tensor:
-        try:
-            # Reset model caches at start
-            self._model.reset_caches()
-            logger.info("Model caches reset before generation")
+        curr_tokens = None
+        curr_tokens_mask = None
+        curr_pos = None
+        samples = []
+        audio = None
 
+        try:
             max_audio_frames = int(max_audio_length_ms / 80)
             tokens, tokens_mask = [], []
             for segment in context:
@@ -216,7 +218,6 @@ class Generator:
             prompt_tokens = torch.cat(tokens, dim=0).long().to(self.device)
             prompt_tokens_mask = torch.cat(tokens_mask, dim=0).bool().to(self.device)
 
-            samples = []
             curr_tokens = prompt_tokens.unsqueeze(0)
             curr_tokens_mask = prompt_tokens_mask.unsqueeze(0)
             curr_pos = torch.arange(0, prompt_tokens.size(0)).unsqueeze(0).long().to(self.device)
@@ -225,28 +226,23 @@ class Generator:
             if curr_tokens.size(1) >= max_seq_len:
                 raise ValueError(f"Inputs too long, must be below max_seq_len - max_audio_frames: {max_seq_len}")
 
-            try:
-                for _ in range(max_audio_frames):
-                    sample = self._model.generate_frame(curr_tokens, curr_tokens_mask, curr_pos, temperature, topk)
-                    if torch.all(sample == 0):
-                        break  # eos
+            for _ in range(max_audio_frames):
+                sample = self._model.generate_frame(curr_tokens, curr_tokens_mask, curr_pos, temperature, topk)
+                if torch.all(sample == 0):
+                    break  # eos
 
-                    samples.append(sample)
+                samples.append(sample)
 
-                    curr_tokens = torch.cat([sample, torch.zeros(1, 1).long().to(self.device)], dim=1).unsqueeze(1)
-                    curr_tokens_mask = torch.cat(
-                        [torch.ones_like(sample).bool(), torch.zeros(1, 1).bool().to(self.device)], dim=1
-                    ).unsqueeze(1)
-                    curr_pos = curr_pos[:, -1:] + 1
+                curr_tokens = torch.cat([sample, torch.zeros(1, 1).long().to(self.device)], dim=1).unsqueeze(1)
+                curr_tokens_mask = torch.cat(
+                    [torch.ones_like(sample).bool(), torch.zeros(1, 1).bool().to(self.device)], dim=1
+                ).unsqueeze(1)
+                curr_pos = curr_pos[:, -1:] + 1
 
-                audio = self._audio_tokenizer.decode(torch.stack(samples).permute(1, 2, 0)).squeeze(0).squeeze(0)
-            finally:
-                # Clear any temporary tensors
-                del curr_tokens
-                del curr_tokens_mask
-                del curr_pos
-                del samples
-                torch.cuda.empty_cache() if torch.cuda.is_available() else None
+            if not samples:
+                raise RuntimeError("No audio frames were generated")
+
+            audio = self._audio_tokenizer.decode(torch.stack(samples).permute(1, 2, 0)).squeeze(0).squeeze(0)
 
             # Initial normalization
             max_val = torch.max(torch.abs(audio))
@@ -255,8 +251,8 @@ class Generator:
             audio = audio * 0.95  # Add small headroom
 
             # Watermarking
-            # audio, wm_sample_rate = watermark(self._watermarker, audio, self.sample_rate, CSM_1B_GH_WATERMARK)
-            # audio = torchaudio.functional.resample(audio, orig_freq=wm_sample_rate, new_freq=self.sample_rate)
+            audio, wm_sample_rate = watermark(self._watermarker, audio, self.sample_rate, CSM_1B_GH_WATERMARK)
+            audio = torchaudio.functional.resample(audio, orig_freq=wm_sample_rate, new_freq=self.sample_rate)
 
             # Final normalization and cleanup
             audio = audio.to(torch.float32)  # Ensure float32 format
@@ -271,17 +267,24 @@ class Generator:
                 fade = torch.linspace(1.0, 0.0, fade_len, device=self.device)
                 audio[-fade_len:] *= fade
 
-            # Clear any remaining temporary tensors
-            torch.cuda.empty_cache() if torch.cuda.is_available() else None
-            
             return audio
-        
+
         except Exception as e:
             logger.error(f"Error in generate: {str(e)}")
             logger.error(traceback.format_exc())
-            # Clean up on error
-            torch.cuda.empty_cache() if torch.cuda.is_available() else None
             raise
+
+        finally:
+            # Clean up tensors
+            if curr_tokens is not None:
+                del curr_tokens
+            if curr_tokens_mask is not None:
+                del curr_tokens_mask
+            if curr_pos is not None:
+                del curr_pos
+            if samples:
+                del samples
+            torch.cuda.empty_cache() if torch.cuda.is_available() else None
 
 def load_csm_1b(ckpt_path: str = "ckpt.pt", device: str = "cpu") -> Generator:
     try:
@@ -293,7 +296,7 @@ def load_csm_1b(ckpt_path: str = "ckpt.pt", device: str = "cpu") -> Generator:
             audio_num_codebooks=32,
         )
         model = Model(model_args).to(device=device, dtype=torch.float32)
-        state_dict = torch.load(ckpt_path, map_location=device)
+        state_dict = torch.load(ckpt_path, map_location=device, weights_only=True)
         model.load_state_dict(state_dict)
 
         generator = Generator(model)

@@ -135,6 +135,10 @@ async def chat(request: ChatRequest):
         # Generate audio from text
         logger.info("Generating audio...")
         try:
+            # Reset caches before generation
+            model._model.reset_caches()
+            logger.info("Model caches reset before generation")
+
             audio = model.generate(
                 text=request.message,
                 speaker=request.speaker,
@@ -142,15 +146,17 @@ async def chat(request: ChatRequest):
                 temperature=request.temperature,
                 max_audio_length_ms=request.max_audio_length_ms,
             )
-            # Clear model caches after generation
-            model._model.reset_caches()
-            logger.info("Model caches cleared")
+            logger.info("Audio generation completed")
+
         except Exception as e:
             logger.error(f"Error during audio generation: {str(e)}")
-            # Ensure caches are cleared even on error
-            model._model.reset_caches()
             raise
-        
+        finally:
+            # Always reset caches after generation
+            model._model.reset_caches()
+            logger.info("Model caches cleared")
+            torch.cuda.empty_cache() if torch.cuda.is_available() else None
+
         # Log audio properties
         logger.info(f"Audio shape: {audio.shape}, dtype: {audio.dtype}")
         
@@ -163,7 +169,6 @@ async def chat(request: ChatRequest):
         # Convert WAV to MP3
         mp3_data = convert_to_mp3(wav_data, model.sample_rate)
         
-        # Create response with audio data
         return StreamingResponse(
             io.BytesIO(mp3_data),
             media_type="audio/mpeg",
