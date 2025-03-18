@@ -1,3 +1,52 @@
+# CSM CHAT - WEB INTERFACE - by Bron Fieldwalker
+
+![image](https://github.com/user-attachments/assets/86e272b6-e203-4c6a-bc96-af2885fba937)
+
+## Web Interface
+
+This repository includes a modern web interface built with:
+- FastAPI backend for efficient model serving
+- React frontend with Mantine UI components
+- Optimized audio processing using ffmpeg
+
+### Features
+- Real-time text-to-speech generation
+- Multiple speaker selection (0-2)
+- Adjustable temperature (0.1-1.0)
+- Configurable max audio length (1-30s)
+- Automatic audio playback
+- Progress tracking during generation
+- Audio format optimization:
+  - MP3 format with 128kbps bitrate
+  - Mono audio for efficiency
+  - LAME encoder for high-quality compression
+  - Original sample rate preservation
+
+### Performance Optimizations
+- Local tokenizer caching
+- CUDA acceleration when available
+- Efficient audio transmission
+- Minimized state updates
+- Proper error handling
+- Browser-compatible audio formats
+
+## Audio Format Optimization
+
+The web interface automatically optimizes generated audio using ffmpeg with the following settings:
+- MP3 format for better compression and wider compatibility
+- 128kbps bitrate for optimal quality/size balance
+- Mono audio to reduce file size
+- LAME encoder for high-quality compression
+- Original sample rate preservation for audio fidelity
+
+These optimizations result in:
+- Smaller file sizes for faster transmission
+- Wider browser and device compatibility
+- Maintained audio quality
+- Efficient storage and bandwidth usage
+
+
+
 # CSM
 
 **2025/03/13** - We are releasing the 1B CSM variant. The checkpoint is [hosted on Hugging Face](https://huggingface.co/sesame/csm_1b).
