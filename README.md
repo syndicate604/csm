@@ -45,13 +45,75 @@ These optimizations result in:
 - Maintained audio quality
 - Efficient storage and bandwidth usage
 
+## Added Dependencies
+
+```
+# FastAPI backend dependencies
+fastapi==0.109.0
+uvicorn==0.27.0
+python-multipart==0.0.6
+pydantic==2.6.0
+
+# Audio processing
+ffmpeg-python==0.2.0
+pydub==0.25.1
+```
+
 ## Not Included
 
 * Not included in this repo are the CSM and llama model
 * Model checkpoint file: server/ckpt.pt (PyTorch weights file)
 * Model definition: models.py (Contains ModelArgs and Model class definitions)
 
+# Quick Start Guide
 
+1. Clone the repository and enter the directory:
+```bash
+git clone https://github.com/syndicate604/csm/
+cd csm
+```
+
+2. Set up Python environment and install backend dependencies:
+```bash
+python3.10 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# Login to access model weights
+huggingface-cli login
+```
+
+3. Install system dependencies:
+```bash
+# For Ubuntu/Debian
+sudo apt-get install ffmpeg
+
+# For macOS
+brew install ffmpeg
+
+# For Windows
+# Install ffmpeg from https://ffmpeg.org/download.html
+# The triton package cannot be installed in Windows
+# Use: pip install triton-windows
+```
+
+4. Set up and start the FastAPI backend:
+```bash
+cd server
+uvicorn main:app --reload  # The server will run on http://localhost:8000
+```
+
+5. In a new terminal, set up and start the React frontend:
+```bash
+cd client
+npm install
+npm start  # The frontend will run on http://localhost:3000
+```
+
+The web interface will be available at http://localhost:3000
+
+
+-------------------------------------------------------------------------------------------------
 # CSM
 
 **2025/03/13** - We are releasing the 1B CSM variant. The checkpoint is [hosted on Hugging Face](https://huggingface.co/sesame/csm_1b).
