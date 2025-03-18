@@ -7,3 +7,13 @@ moshi==0.2.2
 torchtune==0.4.0
 torchao==0.9.0
 silentcipher @ git+https://github.com/SesameAILabs/silentcipher@master
+
+# FastAPI backend dependencies
+fastapi==0.109.0
+uvicorn==0.27.0
+python-multipart==0.0.6
+pydantic==2.6.0
+
+# Audio processing
+ffmpeg-python==0.2.0
+pydub==0.25.1
