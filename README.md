@@ -1,6 +1,60 @@
+# CSM CHAT - WEB INTERFACE - by Bron Fieldwalker
+
+![image](https://github.com/user-attachments/assets/86e272b6-e203-4c6a-bc96-af2885fba937)
+
+## Web Interface
+
+This repository includes a modern web interface built with:
+- FastAPI backend for efficient model serving
+- React frontend with Mantine UI components
+- Optimized audio processing using ffmpeg
+
+### Features
+- Real-time text-to-speech generation
+- Multiple speaker selection (0-2)
+- Adjustable temperature (0.1-1.0)
+- Configurable max audio length (1-30s)
+- Automatic audio playback
+- Progress tracking during generation
+- Audio format optimization:
+  - MP3 format with 128kbps bitrate
+  - Mono audio for efficiency
+  - LAME encoder for high-quality compression
+  - Original sample rate preservation
+
+### Performance Optimizations
+- Local tokenizer caching
+- CUDA acceleration when available
+- Efficient audio transmission
+- Minimized state updates
+- Proper error handling
+- Browser-compatible audio formats
+
+## Audio Format Optimization
+
+The web interface automatically optimizes generated audio using ffmpeg with the following settings:
+- MP3 format for better compression and wider compatibility
+- 128kbps bitrate for optimal quality/size balance
+- Mono audio to reduce file size
+- LAME encoder for high-quality compression
+- Original sample rate preservation for audio fidelity
+
+These optimizations result in:
+- Smaller file sizes for faster transmission
+- Wider browser and device compatibility
+- Maintained audio quality
+- Efficient storage and bandwidth usage
+
+## Not Included
+
+* Not included in this repo are the CSM and llama model
+* Model checkpoint file: server/ckpt.pt (PyTorch weights file)
+* Model definition: models.py (Contains ModelArgs and Model class definitions)
+
+
 # CSM
 
-**2025/03/13** - We are releasing the 1B CSM variant. The checkpoint is [hosted on HuggingFace](https://huggingface.co/sesame/csm_1b).
+**2025/03/13** - We are releasing the 1B CSM variant. The checkpoint is [hosted on Hugging Face](https://huggingface.co/sesame/csm_1b).
 
 ---
 
@@ -8,11 +62,19 @@ CSM (Conversational Speech Model) is a speech generation model from [Sesame](htt
 
 A fine-tuned variant of CSM powers the [interactive voice demo](https://www.sesame.com/voicedemo) shown in our [blog post](https://www.sesame.com/research/crossing_the_uncanny_valley_of_voice).
 
-A hosted [HuggingFace space](https://huggingface.co/spaces/sesame/csm-1b) is also available for testing audio generation.
+A hosted [Hugging Face space](https://huggingface.co/spaces/sesame/csm-1b) is also available for testing audio generation.
 
-## Usage
+## Requirements
 
-Setup the repo
+* A CUDA-compatible GPU
+* The code has been tested on CUDA 12.4 and 12.6, but it may also work on other versions
+* Similarly, Python 3.10 is recommended, but newer versions may be fine
+* For some audio operations, `ffmpeg` may be required
+* Access to the following Hugging Face models:
+  * [Llama-3.2-1B](https://huggingface.co/meta-llama/Llama-3.2-1B)
+  * [CSM-1B](https://huggingface.co/sesame/csm-1b)
+
+### Setup
 
 ```bash
 git clone git@github.com:SesameAILabs/csm.git
@@ -20,17 +82,33 @@ cd csm
 python3.10 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+
+# You will need access to CSM-1B and Llama-3.2-1B
+huggingface-cli login
 ```
+
+### Windows Setup
+
+The `triton` package cannot be installed in Windows. Instead use `pip install triton-windows`.
+
+## Usage
 
 Generate a sentence
 
 ```python
-from huggingface_hub import hf_hub_download
 from generator import load_csm_1b
 import torchaudio
+import torch
 
-model_path = hf_hub_download(repo_id="sesame/csm-1b", filename="ckpt.pt")
-generator = load_csm_1b(model_path, "cuda")
+if torch.backends.mps.is_available():
+    device = "mps"
+elif torch.cuda.is_available():
+    device = "cuda"
+else:
+    device = "cpu"
+
+generator = load_csm_1b(device=device)
+
 audio = generator.generate(
     text="Hello from Sesame.",
     speaker=0,
@@ -41,7 +119,7 @@ audio = generator.generate(
 torchaudio.save("audio.wav", audio.unsqueeze(0).cpu(), generator.sample_rate)
 ```
 
-CSM sounds best when provided with context. You can prompt or provide context to the model using a `Segment` for each speaker utterance.
+CSM sounds best when provided with context. You can prompt or provide context to the model using a `Segment` for each speaker's utterance.
 
 ```python
 speakers = [0, 1, 0, 0]
@@ -83,11 +161,11 @@ torchaudio.save("audio.wav", audio.unsqueeze(0).cpu(), generator.sample_rate)
 
 **Does this model come with any voices?**
 
-The model open sourced here is a base generation model. It is capable of producing a variety of voices, but it has not been fine-tuned on any specific voice.
+The model open-sourced here is a base generation model. It is capable of producing a variety of voices, but it has not been fine-tuned on any specific voice.
 
 **Can I converse with the model?**
 
-CSM is trained to be an audio generation model and not a general purpose multimodal LLM. It cannot generate text. We suggest using a separate LLM for text generation.
+CSM is trained to be an audio generation model and not a general-purpose multimodal LLM. It cannot generate text. We suggest using a separate LLM for text generation.
 
 **Does it support other languages?**
 
