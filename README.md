@@ -1,4 +1,6 @@
 # CSM CHAT - WEB INTERFACE - by Bron Fieldwalker
+A web interface that works on CPU - this is a work in progress at the moment it only plays the Voices to test them out.
+To upgrade this to a full voice system we need to hook the voice up to a LLM for responses, CSM is just the text-voice model.
 
 ![image](https://github.com/user-attachments/assets/86e272b6-e203-4c6a-bc96-af2885fba937)
 
